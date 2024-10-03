@@ -24,7 +24,7 @@ import HelloWorld from './HelloWorld';
 const config = getDefaultConfig({
   appName: 'Core DAO Hello World',
   projectId: '2c22698ed6fa65b5ab4a6acb4af0b952',
-  chains: [mainnet, polygon, optimism, arbitrum, base,coreDao],
+  chains: [coreDao],
   ssr: true, // If your dApp uses server side rendering (SSR)
 });
 
