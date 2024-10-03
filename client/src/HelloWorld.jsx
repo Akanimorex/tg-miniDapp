@@ -69,25 +69,30 @@ function HelloWorld() {
     };
 
     return (
-        <div className="flex justify-center items-center bg-red-500 w-full h-screen">
-            <div className='bg-blue-300'>
-                <ConnectButton />
-                <ToastContainer /> {/* Add ToastContainer to display notifications */}
-                <img src={logo} alt="Core DAO Logo" className="logo" />
+        <div>
+           
+            <div className="flex justify-center items-center w-full h-screen">
+                <div className='border-white'>
+                    <div className=''>
+                        <img src={logo} alt="Core DAO Logo" className="logo" />
+                        <ConnectButton />
+                    </div>
+                    <ToastContainer /> {/* Add ToastContainer to display notifications */}
 
-                {showMessage && (
-                    <div className="message-display">{message?.toString()}</div>
-                )}
-                <button className="retrieve-button" onClick={refetchMessage}>Retrieve Current Message</button>
-                <br />
-                <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="input-field"
-                    placeholder="Enter new message"
-                />
-                <button className="update-button" onClick={handleSendMessage}>Send New Message</button>
+                    {showMessage && (
+                        <div className="message-display">{message?.toString()}</div>
+                    )}
+                    <button className="retrieve-button" onClick={refetchMessage}>Retrieve Current Message</button>
+                    <br />
+                    <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="input-field"
+                        placeholder="Enter new message"
+                    />
+                    <button className="update-button" onClick={handleSendMessage}>Send New Message</button>
+                </div>
             </div>
         </div>
     );
