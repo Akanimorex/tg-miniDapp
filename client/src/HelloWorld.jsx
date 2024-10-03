@@ -73,25 +73,25 @@ function HelloWorld() {
            
             <div className="flex justify-center items-center w-full h-screen">
                 <div className='border-white'>
-                    <div className=''>
+                    <div className='mx-2'>
                         <img src={logo} alt="Core DAO Logo" className="logo" />
-                        <ConnectButton />
                     </div>
+                    <ConnectButton/>
                     <ToastContainer /> {/* Add ToastContainer to display notifications */}
 
                     {showMessage && (
-                        <div className="message-display">{message?.toString()}</div>
+                        <div className="text-[#e67e22]">{message?.toString()}</div>
                     )}
-                    <button className="retrieve-button" onClick={refetchMessage}>Retrieve Current Message</button>
+                    <button className="w-full bg-[#e67e22] my-2" onClick={refetchMessage}>Retrieve Current Message</button>
                     <br />
                     <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        className="input-field"
+                        className="w-full h-10 p-2 my-3"
                         placeholder="Enter new message"
                     />
-                    <button className="update-button" onClick={handleSendMessage}>Send New Message</button>
+                    <button className="w-full bg-[#e67e22]" onClick={handleSendMessage}>Send New Message</button>
                 </div>
             </div>
         </div>
