@@ -43,22 +43,11 @@ const coreTestnet = {
 
 const config = getDefaultConfig({
   appName: 'Core DAO Hello World',
-  projectId: '2c22698ed6fa65b5ab4a6acb4af0b952',
+  projectId: '',//your wallet connect project  ID passed in string. you could use an env for security 
   chains: [coreDao,coreTestnet],
   ssr: true, // If your dApp uses server side rendering (SSR)
 });
 
-// const { connectors } = getDefaultWallets({
-//   appName: 'Core DAO Hello World',
-//   projectId: '2c22698ed6fa65b5ab4a6acb4af0b952', // Get this from WalletConnect
-//   chains:[mainnet,coreDao,polygon,optimism,arbitrum,base]
-// });
-
-// const wagmiConfig = createConfig({
-//   autoConnect: true,
-//   connectors,
-//   publicClient
-// });
 
 const queryClient = new QueryClient();
 

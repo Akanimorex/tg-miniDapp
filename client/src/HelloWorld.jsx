@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useContractRead, useSendTransaction } from 'wagmi';
+import { useReadContract, useSendTransaction } from 'wagmi';
 import { ethers } from 'ethers';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; 
@@ -26,7 +26,7 @@ function HelloWorld() {
     };
 
     // Read the current message from the contract
-    const { data: message, refetch: refetchMessage } = useContractRead({
+    const { data: message, refetch: refetchMessage } = useReadContract({
         ...contractConfig,
         functionName: 'message',
         onSuccess(data) {
@@ -39,12 +39,30 @@ function HelloWorld() {
         }
     });
 
+    // useEffect(()=>{
+    //     toast.error("this should work")
+    // },[])
+
     // UseSendTransaction to send transaction
     const { sendTransaction } = useSendTransaction({
-        onSuccess() {
-            toast.success('Message sent successfully!');
-            setNewMessage(''); // Clear the input field
-            refetchMessage();  // Refresh the message after sending
+        onSuccess: async (data) => {
+            try {
+                // Wait for the transaction to be mined
+                const receipt = await data.wait();
+                console.log(receipt,"receipt")
+                
+                // If the transaction is mined successfully
+                if (receipt.status === 1) {
+                    toast.success('Message sent successfully!');
+                    setNewMessage(''); // Clear the input field
+                    refetchMessage();  // Refresh the message after sending
+                } else {
+                    toast.error('Transaction failed after being mined.');
+                }
+            } catch (error) {
+                toast.error('Error while waiting for transaction confirmation.');
+                console.error('Error confirming transaction:', error);
+            }
         },
         onError(error) {
             toast.error('Failed to send the transaction. Please try again.');
@@ -68,13 +86,15 @@ function HelloWorld() {
         }
     };
 
+  
+
     return (
         <div>
            
             <div className="flex justify-center items-center w-full h-screen">
                 <div className='border-white'>
                     <div className='mx-2'>
-                        <img src={logo} alt="Core DAO Logo" className="logo" />
+                        {/* <img src={logo} alt="Core DAO Logo" className="logo" /> */}
                     </div>
                     <ConnectButton/>
                     <ToastContainer /> {/* Add ToastContainer to display notifications */}

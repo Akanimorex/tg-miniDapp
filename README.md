@@ -1,8 +1,10 @@
 # Simple Hello World dApp on Core
 In this tutorial, you'll learn how to build a simple decentralized application (dApp) using the Core blockchain TestNet. The focus will be on creating a "Hello World" dApp that interacts with a smart contract. This dApp will allow users to store, retrieve, and update a message on the blockchain. By following the steps in this guide, you will gain hands-on experience with MetaMask wallet integration, smart contract development, and front-end interaction using the Ethers.js library.
+In this tutorial, we eill learn how to deploy a full simple decentralized application (dapp) on Telegram as a mini-dapp, which you can share with your contacts in-app to use.
 
 ## What Are We Building
-In this tutorial, we'll develop a simple Hello World decentralized application (dApp) that stores a message in a smart contract deployed on the Core blockchain TestNet. The dApp also has the functionality to retrieve and display the stored message.
+
+In this tutorial, we will build a simple getter and setter dApp, which stores a message  in a smart contract deployed on the Core blockchain testnet. The dapp The dApp also has the functionality to retrieve and display the stored message. We are going to deploy the web application on telegram and we can use it as a mini app.
 
 ## Learning Takeaways
 This tutorial will help you gain knowledge on the following learning points:
@@ -12,6 +14,7 @@ This tutorial will help you gain knowledge on the following learning points:
 * Front-end integration with the smart contract using Ethers.js library;
 * Read data from a smart contract;
 * Write data to a smart contract;
+* Deploy on Telegram as a mini dapp
 
 ## Software Prerequisites
 * [Git](https://git-scm.com/) v2.44.0
@@ -259,218 +262,227 @@ If succesfully deployed, you will get the following output
 ⚡️ Let's create a frontend interface for interacting with the `HelloWorld` smart contract.
 
 ### Set Up React Project
-1. Run the following commands to create a react project and install the required depencendy of `ethers.js` to communicate with the HelloWorld smart contract.
+1. Run the following commands to create a react project and install the required depencendy of `ethers.js`  to communicate with the HelloWorld smart contract and rainbowkit for wallet management
 
 ```bash
-npx create-react-app frontend
-cd frontend
+npm create vite@latest client -- --template react
+
+cd client
 npm install ethers
+npm install @rainbow-me/rainbowkit wagmi viem@2.x @tanstack/react-query
 ``` 
 ### Getting HelloWorld Contract ABI
 * Copy the `HelloWorld.json` file from `artifacts/contracts/HelloWorld.sol/` to the `frontend/src/Contract-ABI` directory.
 
 ### Create the React Components
 
-* Inside `src`, create a file named `HelloWorld.js`. Ensure you replace placeholders like `YOUR_CONTRACT_ADDRESS` with actual values from your deployment.
+* Inside `src`, create a file named `HelloWorld.jsx`. Ensure you replace placeholders like `YOUR_CONTRACT_ADDRESS` with actual values from your deployment.
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useReadContract, useSendTransaction } from 'wagmi';
 import { ethers } from 'ethers';
-import { toast, ToastContainer } from 'react-toastify'; // Import ToastContainer and toast
-import 'react-toastify/dist/ReactToastify.css'; // Import the CSS for toast notifications
-import './HelloWorld.css'; // Import the CSS file
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; 
+import './HelloWorld.css'; 
 
 // Import ABI from JSON file
 import HelloWorldABI from './Contract-ABI/HelloWorld.json';
 
 // Import the logo image
-import logo from './core-dao-logo.png'; // Adjust the path as needed
+import logo from './core-dao-logo.png';
 
 // Replace with your contract's address
 const contractAddress = "0xBF46BAA6210Ae6c9050F5453B996070209f69830";
 
 function HelloWorld() {
-    const [message, setMessage] = useState('');
     const [newMessage, setNewMessage] = useState('');
-    const [provider, setProvider] = useState(null);
-    const [contract, setContract] = useState(null);
-    const [showMessage, setShowMessage] = useState(false); // State to control message visibility
+    const [showMessage, setShowMessage] = useState(false);
 
-    useEffect(() => {
-        async function init() {
-            if (!window.ethereum) {
-                toast.error("No crypto wallet found. Please install MetaMask.");
-                return;
-            }
+    // Contract config
+    const contractConfig = {
+        address: contractAddress,
+        abi: HelloWorldABI.abi,
+    };
 
+    // Read the current message from the contract
+    const { data: message, refetch: refetchMessage } = useReadContract({
+        ...contractConfig,
+        functionName: 'message',
+        onSuccess(data) {
+            toast.success('Message retrieved successfully!');
+            setShowMessage(true);
+        },
+        onError(error) {
+            toast.error('Failed to retrieve message. Please try again.');
+            console.error('Error retrieving message:', error);
+        }
+    });
+
+    // useEffect(()=>{
+    //     toast.error("this should work")
+    // },[])
+
+    // UseSendTransaction to send transaction
+    const { sendTransaction } = useSendTransaction({
+        onSuccess: async (data) => {
             try {
-                // Prompt user to connect MetaMask
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                const signer = await provider.getSigner();
-                const contract = new ethers.Contract(contractAddress, HelloWorldABI.abi, signer);
-                setProvider(provider);
-                setContract(contract);
+                // Wait for the transaction to be mined
+                const receipt = await data.wait();
+                console.log(receipt,"receipt")
+                
+                // If the transaction is mined successfully
+                if (receipt.status === 1) {
+                    toast.success('Message sent successfully!');
+                    setNewMessage(''); // Clear the input field
+                    refetchMessage();  // Refresh the message after sending
+                } else {
+                    toast.error('Transaction failed after being mined.');
+                }
             } catch (error) {
-                toast.error("Failed to connect to MetaMask. Please try again.");
-                console.error("Error initializing MetaMask:", error);
+                toast.error('Error while waiting for transaction confirmation.');
+                console.error('Error confirming transaction:', error);
             }
+        },
+        onError(error) {
+            toast.error('Failed to send the transaction. Please try again.');
+            console.error('Error sending transaction:', error);
         }
+    });
 
-        init();
-    }, []);
-
-    const updateMessage = async () => {
-        if (!contract) return;
+    const handleSendMessage = async () => {
         try {
-            const tx = await contract.setMessage(newMessage);
-            await tx.wait();
-            setNewMessage(''); // Clear the input field after updating
-            toast.success("Message updated successfully!");
+            // Prepare transaction to invoke the setMessage function from the contract
+            const iface = new ethers.Interface(HelloWorldABI.abi);
+            const data = iface.encodeFunctionData('setMessage', [newMessage]);
+
+            sendTransaction?.({
+                to: contractAddress,
+                data, // Encoded function data for setMessage
+            });
         } catch (error) {
-            toast.error("Failed to update message. Please try again.");
-            console.error("Error updating message:", error);
+            console.error('Error preparing transaction:', error);
+            toast.error('Failed to prepare transaction. Please try again.');
         }
     };
 
-    const retrieveMessage = async () => {
-        if (!contract) return;
-        try {
-            const currentMessage = await contract.message();
-            setMessage(currentMessage);
-            setShowMessage(true); // Show the message after retrieval
-            toast.success("Message retrieved successfully!");
-        } catch (error) {
-            toast.error("Failed to retrieve message. Please try again.");
-            console.error("Error retrieving message:", error);
-        }
-    };
+  
 
     return (
-        <div className="container">
-            <ToastContainer /> {/* Add ToastContainer to display notifications */}
-            <img src={logo} alt="Core DAO Logo" className="logo" />
-            {showMessage && (
-                <div className="message-display">{message}</div>
-            )}
-            <button className="retrieve-button" onClick={retrieveMessage}>Retrieve Current Message</button>
-            <br/>
-            <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="input-field"
-                placeholder="Enter new message"
-            />
-            <button className="update-button" onClick={updateMessage}>Set New Message</button>
+        <div>
+           
+            <div className="flex justify-center items-center w-full h-screen">
+                <div className='border-white'>
+                    <div className='mx-2'>
+                        {/* <img src={logo} alt="Core DAO Logo" className="logo" /> */}
+                    </div>
+                    <ConnectButton/>
+                    <ToastContainer /> {/* Add ToastContainer to display notifications */}
+
+                    {showMessage && (
+                        <div className="text-[#e67e22]">{message?.toString()}</div>
+                    )}
+                    <button className="w-full bg-[#e67e22] my-2" onClick={refetchMessage}>Retrieve Current Message</button>
+                    <br />
+                    <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="w-full h-10 p-2 my-3"
+                        placeholder="Enter new message"
+                    />
+                    <button className="w-full bg-[#e67e22]" onClick={handleSendMessage}>Send New Message</button>
+                </div>
+            </div>
         </div>
     );
 }
 
 export default HelloWorld;
+
 ```
 
-### Create HelloWorld.css
 
-* Inside `src`, create a file named `HelloWorld.css`
 
-```css
-.container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    width: 100vw;
-    background-color: #2e2e2e;
-    color: #e0e0e0;
-    padding: 20px;
-    box-sizing: border-box;
-}
+### Update App.jsx
 
-.logo {
-    width: 200px;
-    margin-bottom: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-}
-
-.retrieve-button, .update-button {
-    background-color: #ff920f;
-    color: white;
-    border: none;
-    padding: 14px 28px;
-    margin: 10px;
-    cursor: pointer;
-    border-radius: 8px;
-    font-size: 18px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.retrieve-button:hover, .update-button:hover {
-    background-color: #e67e22;
-    transform: scale(1.05);
-}
-
-.message-display {
-    font-size: 28px;
-    margin-bottom: 20px;
-    font-weight: bold;
-    color: #ffd54f;
-}
-
-.input-field {
-    padding: 14px;
-    border: 1px solid #555;
-    border-radius: 8px;
-    width: 80%;
-    max-width: 500px;
-    margin-bottom: 20px;
-    font-size: 18px;
-    background-color: #424242;
-    color: #fff;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.retrieve-button {
-    margin-top: 20px;
-}
-
-.input-field:focus {
-    background-color: #616161;
-    border-color: #ff920f;
-    outline: none;
-}
-```
-
-### Update App.js 
-
-* Replace the contents of App.js with the following
+* Replace the contents of App.jsx with the following
 
 ```jsx
-import React from 'react';
-import './App.css';
+import '@rainbow-me/rainbowkit/styles.css';
+import {
+  getDefaultConfig,
+  RainbowKitProvider,
+} from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
+import {
+  mainnet,
+  polygon,
+  optimism,
+  arbitrum,
+  base,
+  coreDao,
+} from 'wagmi/chains';
+import {
+  QueryClientProvider,
+  QueryClient,
+} from "@tanstack/react-query";
+
+
 import HelloWorld from './HelloWorld';
 
+const coreTestnet = {
+  id: 1115,
+  name: 'Core Testnet',
+  iconUrl: 'https://images.app.goo.gl/rqMHLjxM8YPaGZHT9',
+  iconBackground: '#fff',
+  nativeCurrency: { name: 'CORE', symbol: 'tCORE', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://rpc.test.btcs.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'Core Explorer', url: 'https://scan.test.btcs.network/' },
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 11_907_934,
+    },
+  },
+};
+
+
+const config = getDefaultConfig({
+  appName: 'Core DAO Hello World',
+  projectId: '',//your wallet connect project  ID passed in string. you could use an env for security 
+  chains: [coreDao,coreTestnet],
+  ssr: true, // If your dApp uses server side rendering (SSR)
+});
+
+
+const queryClient = new QueryClient();
+
 function App() {
-    return (
-        <div className="App">
-            <header className="App-header">
-                <HelloWorld />
-            </header>
-        </div>
-    );
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider  modalSize='wide'>
+          <HelloWorld />
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
 }
 
 export default App;
 ```
 
 ## Running Your Application
-* Start the React Development Server using the command `npm run start`
+* Start the React Development Server using the command `npm run dev`
 
 ```bash
 npm start
-Your application should now be accessible at http://localhost:3000.
+Your application should now be accessible at http://localhost:5174.
 ```
 
 ## Interact with the dApp
@@ -478,4 +490,53 @@ Your application should now be accessible at http://localhost:3000.
 Open your React app in the browser. You should be able to retrieve and set messages using your deployed contract.
 ![frontend](./assets/frontend-ui.png)
 
-🎉 Congratulations! You've just interacted with your newly-deployed contract using your dApp's front end! You can build on the codebase by deploying and interacting with different contracts, and by adding new UI components to the website for your users.
+
+
+
+
+## Deploying a Mini DApp on Telegram
+
+This guide will walk you through hosting your web app and deploying it as a mini dApp on Telegram by connecting it to a bot.
+
+### Prerequisites
+
+- A frontend hosted on a platform like [Netlify](https://www.netlify.com/), [Vercel](https://vercel.com/), or [Fleek](https://fleek.co/).
+- A Telegram account.
+
+### Steps
+
+1. **Host Your Web App**  
+   First, deploy your web app using any of the following platforms:
+   - [Netlify](https://www.netlify.com/)
+   - [Vercel](https://vercel.com/)
+   - [Fleek](https://fleek.co/)
+
+   After successful deployment, you'll receive a domain link to your web app. Keep this URL handy for later.
+
+2. **Create a Telegram Bot**
+   - Open Telegram and search for [BotFather](https://t.me/BotFather).
+   - Start a chat with BotFather and type the command:  
+     `/newbot`
+   - Follow the prompts to choose a **name** for your bot (e.g., `corebot`) and select a unique **username** (ending in `bot`).
+   - Once the bot is created, you'll receive an **API token**. This token is used to interact with your bot via the HTTP API.
+
+3. **Create a Mini App**
+   - Type `/newApp` in the BotFather chat.
+   - Select the bot you just created when prompted.
+   - Provide a **description** of the mini app and upload an image with the required dimensions (640x360 pixels).
+   - When asked to **link your web app**, copy the URL of your hosted web app and paste it in the BotFather chat.
+   - Set a short name for the URL.
+
+4. **Finalize and Launch**
+   - Your mini app is now linked to your bot. You can open it directly in Telegram or in a web browser using the provided link.
+   - Test the integration by interacting with the bot and accessing your web app through the Telegram mini app interface.
+
+
+
+🎉 Congratulations! you've just deployed your dapp on telegram as a mini app. Users can easily share the link in-app and you could take it a step further into making it a mini game for people to play.
+
+
+
+
+
+
