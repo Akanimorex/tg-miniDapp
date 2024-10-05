@@ -17,7 +17,8 @@ const contractAddress = "0xBF46BAA6210Ae6c9050F5453B996070209f69830";
 
 function HelloWorld() {
     const [newMessage, setNewMessage] = useState('');
-    const [showMessage, setShowMessage] = useState(false);
+    const [currentMessage, setCurrentMessage] = useState(null);
+    const [txHash, setTxHash] = useState("");
 
     // Contract config
     const contractConfig = {
@@ -26,12 +27,12 @@ function HelloWorld() {
     };
 
     // Read the current message from the contract
-    const { data: message, refetch: refetchMessage } = useReadContract({
+    const { data: message, refetch: refetchMessage, isFetching } = useReadContract({
         ...contractConfig,
         functionName: 'message',
         onSuccess(data) {
             toast.success('Message retrieved successfully!');
-            setShowMessage(true);
+            setCurrentMessage(data?.toString()); // Save the message to state
         },
         onError(error) {
             toast.error('Failed to retrieve message. Please try again.');
@@ -39,9 +40,12 @@ function HelloWorld() {
         }
     });
 
-    // useEffect(()=>{
-    //     toast.error("this should work")
-    // },[])
+    // Use effect to update the displayed message after fetching
+    useEffect(() => {
+        if (message && !isFetching) {
+            setCurrentMessage(message?.toString());
+        }
+    }, [message, isFetching]);
 
     // UseSendTransaction to send transaction
     const { sendTransaction } = useSendTransaction({
@@ -49,7 +53,6 @@ function HelloWorld() {
             try {
                 // Wait for the transaction to be mined
                 const receipt = await data.wait();
-                console.log(receipt,"receipt")
                 
                 // If the transaction is mined successfully
                 if (receipt.status === 1) {
@@ -86,11 +89,13 @@ function HelloWorld() {
         }
     };
 
-  
+    const handleRetrieveMessage = () => {
+        // Trigger refetch to manually refresh the message
+        refetchMessage();
+    };
 
     return (
         <div>
-           
             <div className="flex justify-center items-center w-full h-screen">
                 <div className='border-white'>
                     <div className='mx-2'>
@@ -99,10 +104,10 @@ function HelloWorld() {
                     <ConnectButton/>
                     <ToastContainer /> {/* Add ToastContainer to display notifications */}
 
-                    {showMessage && (
-                        <div className="text-[#e67e22]">{message?.toString()}</div>
+                    {currentMessage && (
+                        <div className="text-[#e67e22]">{currentMessage}</div>
                     )}
-                    <button className="w-full bg-[#e67e22] my-2" onClick={refetchMessage}>Retrieve Current Message</button>
+                    <button className="w-full bg-[#e67e22] my-2" onClick={handleRetrieveMessage}>Retrieve Current Message</button>
                     <br />
                     <input
                         type="text"
