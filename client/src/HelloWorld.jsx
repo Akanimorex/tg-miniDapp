@@ -92,7 +92,7 @@ function HelloWorld() {
             <div className="flex justify-center items-center w-full h-screen">
                 <div className='border-white'>
                     <div className='mx-2'>
-                        {/* <img src={logo} alt="Core DAO Logo" className="logo" /> */}
+                         <img src={logo} alt="Core DAO Logo" className="logo" /> 
                     </div>
                     <ConnectButton/>
                     <ToastContainer />
